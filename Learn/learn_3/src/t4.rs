@@ -156,3 +156,28 @@ pub fn test5() {
         println!("{}:{}", i, v);
     }
 }
+
+#[cfg(target_os = "windows")]
+fn get_os_info() {
+    println!("这是 Windows 系统");
+}
+
+// 多个条件：任意满足一个即可（OR）
+#[cfg(any(target_os = "linux", target_os = "macos"))]
+fn get_os_info() {
+    println!("这是 Unix 类系统");
+}
+
+cfg_if::cfg_if! {
+    if #[cfg(target_os="linux")]{
+        fn get_path()->&'static str{"/usr/share"}
+    }else if #[cfg(target_os="windows")]{
+        fn get_path()->&'static str{"C:\\ProgramData"}
+    }else {
+        fn get_path()->&'static str{"/opt"}
+    }
+}
+pub fn test6() {
+    get_os_info();
+    println!("{}", get_path());
+}

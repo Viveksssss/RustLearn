@@ -21,4 +21,5 @@ fn main() {
     t4::test3();
     t4::test4();
     t4::test5();
+    t4::test6();
 }
