@@ -4,6 +4,7 @@ mod t3;
 mod t4;
 mod t5;
 mod t6;
+mod t7;
 fn main() {
     println!("Hello, world!");
     // t1::test3();
@@ -30,6 +31,8 @@ fn main() {
     // t5::test4();
     // t5::test5();
     // t5::test6();
-    t6::test1();
-    t6::test3();
+    // t6::test1();
+    // t6::test3();
+    t7::test1();
+    t7::test2();
 }
