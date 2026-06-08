@@ -6,6 +6,7 @@ mod t5;
 mod t6;
 mod t7;
 mod t8;
+mod t9;
 fn main() {
     println!("Hello, world!");
     // t1::test3();
@@ -46,4 +47,5 @@ fn main() {
     t8::test9();
     t8::test10();
     t8::test11();
+    t9::test1();
 }

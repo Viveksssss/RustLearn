@@ -264,8 +264,9 @@ pub fn test8() {
         handle.join().unwrap();
     }
 }
-
+// Cell:解决的问题：在不获取 &mut T 的情况下修改值,但是T:Copy
 use std::cell::Cell;
+// RefCell,T更宽恕,它适用于非 Copy 类型，但会在运行时检查借用规则。
 use std::cell::RefCell;
 
 // 由于 Rust 的 mutable 特性，一个结构体中的字段，要么全都是 immutable，要么全部是 mutable，不支持针对部分字段进行设置。比如，在一个 struct 中，可能只有个别的字段需要修改，而其他字段并不需要修改，为了一个字段而将整个 struct 变为 &mut 也是不合理的。
@@ -341,8 +342,6 @@ pub fn test11() {
 
     println!("{:?}\n{:?}\n{:?}", s, s1, s2);
 }
-
-use std::cell::Cell;
 
 pub fn is_even(i: i32) -> bool {
     i % 2 == 0
