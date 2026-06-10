@@ -172,3 +172,113 @@ pub fn test1() {
 
     println!("\n注意：使用 Weak 没有循环引用，节点会被正确释放！");
 }
+
+#[derive(Debug)]
+struct WhatAboutThis<'a> {
+    name: String,
+    nickname: Option<&'a str>,
+}
+// struct SelfRef<'a> {
+//     value: String,
+
+//     // 该引用指向上面的value
+//     pointer_to_value: &'a str,
+// }
+pub fn test2() {
+    // let s = "aaa".to_string();
+    // let v = SelfRef {
+    //     value: s,
+    //     pointer_to_value: &s,
+    // };
+
+    //  let v = SelfRef {
+    // 12 |         value: s,
+    //    |                - value moved here
+    // 13 |         pointer_to_value: &s
+    //    |                           ^^ value borrowed here after move
+
+    let mut tricky = WhatAboutThis {
+        name: "Annaella".to_string(),
+        nickname: None,
+    };
+
+    tricky.nickname = Some(&tricky.name[..4]);
+    println!("{:?}", tricky);
+
+    let tricky2 = create();
+    println!("{:?}", tricky2);
+}
+
+/*
+error: 当你移动 trickey 时，name 字段的内存地址会改变，但 nickname 仍然持有旧的引用，这会导致悬垂指针。
+*/
+
+// fn create<'a>() -> WhatAboutThis<'a> {
+//     let mut trickey = WhatAboutThis {
+//         name: "Annaella".to_string(),
+//         nickname: None,
+//     };
+//     trickey.nickname = Some(&trickey.name[..4]);
+//     trickey
+// }
+/*
+解决方法:使用索引范围而非引用
+*/
+#[derive(Debug)]
+struct NewStruct {
+    name: String,
+    nickname_range: Option<(usize, usize)>,
+}
+
+fn create() -> NewStruct {
+    let name = "Annaella".to_string();
+    NewStruct {
+        name,
+        nickname_range: Some((0, 4)),
+    }
+}
+
+impl NewStruct {
+    fn nickname(&mut self) -> Option<&str> {
+        self.nickname_range
+            .map(|(start, end)| &self.name[start..end])
+    }
+}
+
+#[derive(Debug)]
+struct SelfRef {
+    value: String,
+    pointer_to_value: *const String,
+}
+
+impl SelfRef {
+    fn new(txt: &str) -> Self {
+        SelfRef {
+            value: txt.to_string(),
+            pointer_to_value: std::ptr::null(),
+        }
+    }
+
+    fn init(&mut self) {
+        let self_ref: *const String = &self.value;
+        self.pointer_to_value = self_ref;
+    }
+
+    fn value(&self) -> &str {
+        &self.value
+    }
+
+    fn pointer_to_value(&self) -> &String {
+        assert!(
+            !self.pointer_to_value.is_null(),
+            "SelfRef::pointer_to_value called without SelfRef::init being called first"
+        );
+        unsafe { &*(self.pointer_to_value) }
+    }
+}
+
+pub fn test3() {
+    let mut t = SelfRef::new("hello");
+    t.init();
+    println!("{},{:p}", t.value(), t.pointer_to_value());
+}
