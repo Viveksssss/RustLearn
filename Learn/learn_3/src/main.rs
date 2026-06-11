@@ -1,4 +1,5 @@
 mod t1;
+mod t10;
 mod t2;
 mod t3;
 mod t4;
@@ -49,5 +50,11 @@ fn main() {
     // t8::test11();
     // t9::test1();
     // t9::test2();
-    t9::test3();
+    // t9::test3();
+    // t9::test4();
+    // t10::test1();
+    // t10::test2();
+    // t10::test3();
+    // t10::test4();
+    t10::test5();
 }
