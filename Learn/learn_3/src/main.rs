@@ -8,7 +8,10 @@ mod t6;
 mod t7;
 mod t8;
 mod t9;
-fn main() {
+use tokio;
+use tokio::sync::Semaphore;
+#[tokio::main]
+async fn main() {
     println!("Hello, world!");
     // t1::test3();
     // t1::test4();
@@ -56,5 +59,13 @@ fn main() {
     // t10::test2();
     // t10::test3();
     // t10::test4();
-    t10::test5();
+    // t10::test5();
+    // t10::test6();
+    // t10::test7();
+    // t10::test8();
+    // t10::test9();
+    // t10::test10();
+    // t10::test11();
+    // t10::test12();
+    t10::test13();
 }
