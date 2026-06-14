@@ -1,6 +1,7 @@
 use core::time;
-use std::thread::{self, sleep, spawn};
-use std::time::Duration;
+use std::ops::Sub;
+use std::thread::{self, JoinHandle, sleep, spawn};
+use std::time::{Duration, Instant};
 
 pub fn test1() {
     thread::spawn(|| {
@@ -305,4 +306,129 @@ pub async fn test13() {
     for handle in join_handles {
         handle.await.unwrap();
     }
+}
+
+pub fn test14() {
+    use std::sync::atomic::{AtomicI64, Ordering};
+    static R: AtomicI64 = AtomicI64::new(0);
+
+    fn add_n_times(n: u64) -> JoinHandle<()> {
+        thread::spawn(move || {
+            let mut local = 0;
+            for _ in 0..n {
+                local += 1;
+            }
+            R.fetch_add(local, Ordering::Relaxed);
+        })
+    }
+
+    let s = Instant::now();
+    let mut threads = Vec::with_capacity(10);
+
+    for _ in 0..10 {
+        threads.push(add_n_times(10000000));
+    }
+
+    for thread in threads {
+        thread.join().unwrap();
+    }
+    assert_eq!(
+        10000000 * 10 as u64,
+        R.load(Ordering::Relaxed).try_into().unwrap()
+    );
+
+    println!("{:?}", Instant::now().sub(s));
+}
+
+pub fn test15() {
+    use std::sync::atomic::{AtomicBool, Ordering};
+    use std::thread::{self, JoinHandle};
+
+    static mut DATA: u64 = 0;
+    static READY: AtomicBool = AtomicBool::new(false);
+
+    fn reset() {
+        unsafe {
+            DATA = 0;
+        }
+        READY.store(false, Ordering::Relaxed);
+    }
+
+    fn producer() -> JoinHandle<()> {
+        thread::spawn(move || {
+            unsafe {
+                DATA = 100;
+            }
+            READY.store(true, Ordering::Release);
+            println!("produce one")
+        })
+    }
+
+    fn consumer() -> JoinHandle<()> {
+        thread::spawn(move || {
+            while !READY.load(Ordering::Acquire) {}
+            assert_eq!(100, unsafe { DATA });
+            println!("consume one")
+        })
+    }
+
+    loop {
+        reset();
+        let t_producer = producer();
+        let t_consumer = consumer();
+        t_producer.join().unwrap();
+        t_consumer.join().unwrap();
+    }
+}
+
+pub fn test16() {
+    use std::sync::Arc;
+    use std::sync::atomic::{AtomicUsize, Ordering};
+    use std::{hint, thread};
+
+    let spinlock = Arc::new(AtomicUsize::new(1));
+    let spinlick_clone = spinlock.clone();
+    let thread = thread::spawn(move || {
+        spinlick_clone.store(0, Ordering::SeqCst);
+    });
+
+    while spinlock.load(Ordering::SeqCst) != 0 {
+        hint::spin_loop();
+    }
+
+    if let Err(panic) = thread.join() {
+        println!("Thread had an error: {:?}", panic);
+    }
+}
+
+pub fn test17() {
+    use std::sync::Mutex;
+    use std::thread;
+    // let p = 5 as *mut u8;
+    // let t = thread::spawn(move || {
+    //     println!("{:p}", p);         // *mut u8` cannot be sent between threads safely
+    // });
+    // t.join().unwrap();
+
+    // #[derive(Debug)]
+    // struct MyBox(*mut u8);
+
+    // unsafe impl Send for MyBox {}
+    // let p = MyBox(5 as *mut u8);
+    // let t = thread::spawn(move || {
+    //     println!("{:?}", p);
+    // });
+    // t.join().unwrap();
+
+    #[derive(Debug)]
+    struct MyBox(*const u8);
+
+    unsafe impl Send for MyBox {}
+    unsafe impl Sync for MyBox {} // impl this can avoid follow question
+    let b = &MyBox(5 as *const u8);
+    let v = Arc::new(Mutex::new(b));
+    let t = thread::spawn(move || {
+        let _v1 = v.lock().unwrap(); // `*const u8` cannot be shared between threads safely
+    });
+    t.join().unwrap();
 }
