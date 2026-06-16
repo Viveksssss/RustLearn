@@ -1,6 +1,7 @@
 mod t1;
 mod t10;
 mod t11;
+mod t12;
 mod t2;
 mod t3;
 mod t4;
@@ -75,5 +76,10 @@ fn main() {
     // t11::test2();
     // t11::test3();
     // t11::test4();
-    t11::test5();
+    // t11::test5();
+    // t12::test1();
+    // t12::test2();
+    // t12::test3();
+    // t12::test4();
+    t12::test5();
 }
