@@ -1,16 +1,16 @@
-mod t1;
-mod t10;
-mod t11;
-mod t12;
-mod t2;
-mod t3;
-mod t4;
-mod t5;
-mod t6;
-mod t7;
-mod t8;
-mod t9;
-
+// mod t1;
+// mod t10;
+// mod t11;
+// mod t12;
+mod t13;
+// mod t2;
+// mod t3;
+// mod t4;
+// mod t5;
+// mod t6;
+// mod t7;
+// mod t8;
+// mod t9;
 fn main() {
     println!("Hello, world!");
     // t1::test3();
@@ -81,5 +81,20 @@ fn main() {
     // t12::test2();
     // t12::test3();
     // t12::test4();
-    t12::test5();
+    // t12::test5();
+    // t13::test1();
+    // t13::test2();
+    t13::test3();
+
+    // use std::os::raw::c_int;
+
+    // #[link(name = "math", kind = "dylib")]
+    // unsafe extern "C" {
+    //     fn add(a: c_int, b: c_int) -> c_int;
+    // }
+
+    // unsafe {
+    //     let sum = add(10, 20);
+    //     println!("sum:{}", sum);
+    // }
 }
