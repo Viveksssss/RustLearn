@@ -53,9 +53,25 @@ fn split_at_mut(slice: &mut [i32], mid: usize) -> (&mut [i32], &mut [i32]) {
     }
 }
 
-pub fn test3(){
-    let mut v = vec![1,2,3,4,5,6];
+pub fn test3() {
+    let mut v = vec![1, 2, 3, 4, 5, 6];
     let r = &mut v[..];
-    let (a,b) = split_at_mut(r, 3);
-    println!("{:?},{:?}",a,b);
+    let (a, b) = split_at_mut(r, 3);
+    println!("{:?},{:?}", a, b);
+}
+
+pub fn test4() {
+    use std::arch::asm;
+    let x: u64;
+    let i: u64 = 3;
+    let o: u64;
+    unsafe {
+        asm!(
+            "mov {0},{1}",
+            "add {0},5",
+            out(reg) o,
+            in(reg) i
+        );
+    }
+    println!("i:{},o:{}", i,o);
 }
