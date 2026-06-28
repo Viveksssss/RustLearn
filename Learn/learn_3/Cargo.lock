@@ -39,10 +39,19 @@ dependencies = [
  "anyhow",
  "cfg-if",
  "lazy_static",
+ "my_marco",
  "ouroboros",
  "thiserror",
  "thread_local",
  "tokio",
+]
+
+[[package]]
+name = "my_marco"
+version = "0.1.0"
+dependencies = [
+ "quote",
+ "syn",
 ]
 
 [[package]]

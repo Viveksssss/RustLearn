@@ -10,4 +10,10 @@ lazy_static = "1.5.0"
 ouroboros = "0.18.5"
 thiserror = "2.0.18"
 thread_local = "1.1.9"
-tokio = {version="1.52.3",features=["rt-multi-thread","sync","rt","macros"]}
+tokio = { version = "1.52.3", features = [
+    "rt-multi-thread",
+    "sync",
+    "rt",
+    "macros",
+] }
+my_marco = { path = "../my_marco" }
