@@ -12,6 +12,7 @@ mod t14;
 // mod t7;
 // mod t8;
 // mod t9;
+mod t15;
 fn main() {
     println!("Hello, world!");
     // t1::test3();
@@ -89,7 +90,8 @@ fn main() {
     // t13::test4();
     // t14::test1();
     // t14::test2();
-    t14::test3();
+    // t14::test3();
+    t15::test1();
 
     // use std::os::raw::c_int;
 

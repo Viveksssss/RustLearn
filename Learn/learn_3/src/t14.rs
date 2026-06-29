@@ -65,3 +65,5 @@ pub fn test3() {
     println!("{:?}", SomeData::default());
     println!("{:?}", User::default());
 }
+
+
