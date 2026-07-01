@@ -222,19 +222,13 @@ pub fn test2() {
     impl Future for SimpleTimer {
         type Output = ();
 
-        fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
+        fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
             if self.start.elapsed() >= self.duration {
                 Poll::Ready(())
             } else {
                 let waker = Some(cx.waker().clone());
                 // 注意：这里的定时器永远不会被唤醒
                 // 因为实际实现中，需要一个线程在定时器到达时调用 waker.wake()
-                thread::spawn(move || {
-                    thread::sleep(self.duration);
-                    if let Some(waker) = waker {
-                        waker.wake();
-                    }
-                });
                 // 为了演示，我们会在执行器中模拟唤醒
                 Poll::Pending
             }
@@ -254,4 +248,171 @@ pub fn test2() {
 
     // 运行执行器
     executor.run();
+}
+
+pub fn test3() {
+    #[derive(Debug)]
+    struct Test {
+        a: String,
+        b: *const String,
+    }
+
+    impl Test {
+        fn new(txt: &str) -> Self {
+            Test {
+                a: String::from(txt),
+                b: std::ptr::null(),
+            }
+        }
+
+        fn init(&mut self) {
+            let self_ref: *const String = &self.a;
+            self.b = self_ref;
+        }
+
+        fn a(&self) -> &str {
+            &self.a
+        }
+
+        fn b(&self) -> &String {
+            // String::from(&self.a)
+            unsafe { &*self.b }
+        }
+    }
+
+    let mut test1 = Test::new("test1");
+    test1.init();
+    let mut test2 = Test::new("test2");
+    test2.init();
+
+    println!("a: {}, b: {}", test1.a(), test1.b());
+    std::mem::swap(&mut test1, &mut test2);
+    println!("a: {}, b: {}", test2.a(), test2.b());
+}
+
+pub fn test4() {
+    use std::marker::PhantomPinned;
+    use std::pin::Pin;
+
+    #[derive(Debug)]
+    struct Test {
+        a: String,
+        b: *const String,
+        _marker: PhantomPinned,
+    }
+
+    impl Test {
+        fn new(txt: &str) -> Self {
+            Test {
+                a: String::from(txt),
+                b: std::ptr::null(),
+                _marker: PhantomPinned,
+            }
+        }
+
+        fn init(self: Pin<&mut Self>) {
+            let self_ref: *const String = &self.a;
+            let this = unsafe { self.get_unchecked_mut() };
+            this.b = self_ref;
+        }
+
+        fn a(self: Pin<&Self>) -> &str {
+            &self.get_ref().a
+        }
+
+        fn b(self: Pin<&Self>) -> &String {
+            unsafe { &*(self.b) }
+        }
+    }
+
+    let mut test1 = Test::new("test1");
+    // 新的`test1`由于使用了`Pin`，因此无法再被移动，这里的声明会将之前的`test1`遮蔽掉(shadow)
+    let mut test1 = unsafe { Pin::new_unchecked(&mut test1) };
+    let mut test3 = unsafe { Pin::new_unchecked(&mut test1) };
+    Test::init(test1.as_mut());
+
+    let mut test2 = Test::new("test2");
+    let mut test2 = unsafe { Pin::new_unchecked(&mut test2) };
+    // Test::init(test2.as_mut());
+    test2.as_mut().init();
+
+    println!(
+        "a: {}, b: {}",
+        Test::a(test1.as_ref()),
+        Test::b(test1.as_ref())
+    );
+    println!(
+        "a: {}, b: {}",
+        Test::a(test2.as_ref()),
+        Test::b(test2.as_ref())
+    );
+    std::mem::swap(&mut test1, &mut test2);
+    println!(
+        "a: {}, b: {}",
+        Test::a(test1.as_ref()),
+        Test::b(test1.as_ref())
+    );
+    println!(
+        "a: {}, b: {}",
+        Test::a(test2.as_ref()),
+        Test::b(test2.as_ref())
+    );
+}
+
+pub fn test5() {
+    use std::marker::PhantomPinned;
+    use std::pin::Pin;
+
+    #[derive(Debug)]
+    struct Test {
+        a: String,
+        b: *const String,
+        _marker: PhantomPinned,
+    }
+
+    impl Test {
+        fn new(txt: &str) -> Pin<Box<Self>> {
+            let t = Test {
+                a: String::from(txt),
+                b: std::ptr::null(),
+                _marker: PhantomPinned,
+            };
+            let mut boxed = Box::pin(t);
+            let self_ptr: *const String = &boxed.as_ref().a;
+            unsafe { boxed.as_mut().get_unchecked_mut().b = self_ptr };
+            boxed
+        }
+
+        fn a(self: Pin<&Self>) -> &str {
+            &self.get_ref().a
+        }
+
+        fn b(self: Pin<&Self>) -> &String {
+            unsafe { &*(self.b) }
+        }
+    }
+    let mut test1 = Test::new("test1");
+    let mut test2 = Test::new("test2");
+
+    println!(
+        "a: {}, b: {}",
+        Test::a(test1.as_ref()),
+        Test::b(test1.as_ref())
+    );
+    println!(
+        "a: {}, b: {}",
+        Test::a(test2.as_ref()),
+        Test::b(test2.as_ref())
+    );
+    std::mem::swap(&mut test1, &mut test2);
+    println!(
+        "a: {}, b: {}",
+        Test::a(test1.as_ref()),
+        Test::b(test1.as_ref())
+    );
+    println!(
+        "a: {}, b: {}",
+        Test::a(test2.as_ref()),
+        Test::b(test2.as_ref())
+    );
 }
