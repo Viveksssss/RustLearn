@@ -13,7 +13,8 @@ mod t14;
 // mod t8;
 // mod t9;
 mod t15;
-fn main() {
+#[tokio::main]
+async fn main() {
     println!("Hello, world!");
     // t1::test3();
     // t1::test4();
@@ -94,7 +95,8 @@ fn main() {
     // t15::test1();
     // t15::test2();
     // t15::test4();
-    t15::test5();
+    // t15::test5();
+    t15::test6().await;
 
     // use std::os::raw::c_int;
 

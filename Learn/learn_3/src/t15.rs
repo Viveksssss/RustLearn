@@ -1,6 +1,10 @@
-use std::time::Duration;
+use std::{
+    io,
+    pin::{Pin, pin},
+    time::Duration,
+};
 
-use futures::executor::block_on;
+use futures::{SinkExt, Stream, StreamExt, channel::mpsc, executor::block_on};
 
 async fn do_something() {
     do_before().await;
@@ -415,4 +419,109 @@ pub fn test5() {
         Test::a(test2.as_ref()),
         Test::b(test2.as_ref())
     );
+}
+
+//  报错,因为x的生命周期持续到bad末尾,但是我们却将x引用传入到borrow_x,future活的更久.
+//  关键在于 async 块并不是直接返回 borrow_x 的 Future，而是返回一个“包含 x 数据的新的 Future”。
+//  1. 捕获并存储：当 Rust 编译器遇到 async { ... } 块时，它会将这个块编译成一个匿名的结构体（也就是生成的 Future 实现）。这个结构体里会包含块中使用的所有局部变量（比如 x）作为它的成员字段。
+//  2. 延后执行：good 函数返回的是这个“匿名结构体 Future”。此时，x（值为 5）已经被移动并存储在这个结构体内部了。x 的生命周期不再受限于 good 函数的栈帧，而是受限于这个返回的 Future 对象本身。
+
+// use std::future::Future;
+// fn bad() -> impl Future<Output = u8> {
+//     let x = 5;
+//     borrow_x(&x) // ERROR: `x` does not live long enough
+// }
+
+// async fn borrow_x(x: &u8) -> u8 { *x }
+
+use std::future::Future;
+
+async fn borrow_x(x: &u8) -> u8 {
+    *x
+}
+
+fn good() -> impl Future<Output = u8> {
+    async {
+        let x = 5;
+        borrow_x(&x).await
+    }
+}
+
+async fn send_recv() {
+    const BUFFER_SIZE: usize = 10;
+    let (mut tx, mut rx) = mpsc::channel::<i32>(BUFFER_SIZE);
+
+    tx.send(1).await.unwrap();
+    tx.send(2).await.unwrap();
+    drop(tx);
+
+    // `StreamExt::next` 类似于 `Iterator::next`, 但是前者返回的不是值，而是一个 `Future<Output = Option<T>>`，
+    // 因此还需要使用`.await`来获取具体的值
+    assert_eq!(Some(1), rx.next().await);
+    assert_eq!(Some(2), rx.next().await);
+    assert_eq!(None, rx.next().await);
+}
+
+async fn sum_with_next(mut stream: Pin<&mut dyn Stream<Item = i32>>) -> i32 {
+    use futures::stream::StreamExt;
+    let mut sum = 0;
+    while let Some(item) = stream.next().await {
+        sum += item;
+    }
+    sum
+}
+
+async fn sum_with_try_next(
+    mut stream: Pin<&mut dyn Stream<Item = Result<i32, io::Error>>>,
+) -> Result<i32, io::Error> {
+    use futures::stream::TryStreamExt;
+    let mut sum = 0;
+    while let Some(item) = stream.try_next().await? {
+        sum += item;
+    }
+    Ok(sum)
+}
+
+async fn jump_around(
+    mut stream: Pin<&mut dyn Stream<Item = Result<u8, io::Error>>>,
+) -> Result<(), io::Error> {
+    use futures::stream::TryStreamExt;
+    const MAX_CONCURRENT_JUMPERS: usize = 100;
+    // stream
+    //     .try_for_each_concurrent(MAX_CONCURRENT_JUMPERS, |num| async move {
+    //         // jump_n_times(num).await?;
+    //         // report_n_jumps(num).await?;
+    //         println!("{num}");
+    //         Ok(())
+    //     })
+    //     .await?;
+
+    let fnn = |num| async move {
+        println!("{:?}", num);
+    };
+    stream
+        .for_each_concurrent(MAX_CONCURRENT_JUMPERS, fnn)
+        .await;
+
+    Ok(())
+}
+use futures::stream::{self};
+fn generator() -> impl Stream<Item = usize> {
+    stream::unfold(0, |state| async move { Some((state, state + 1)) })
+}
+
+pub async fn test6() {
+    let mut counter = generator();
+    let mut counter2 = generator();
+    let mut counter = pin!(counter.take(100));
+    while let Some(item) = counter.next().await {
+        println!("{}", item);
+    }
+
+    counter2
+        .take(5)
+        .for_each(|num| async move {
+            println!("{}", num);
+        })
+        .await;
 }
