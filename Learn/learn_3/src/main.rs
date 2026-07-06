@@ -1,3 +1,8 @@
+use std::{pin::pin, time::Duration};
+
+use futures::{StreamExt, stream};
+use tokio::time;
+
 // mod t1;
 // mod t10;
 // mod t11;
@@ -96,7 +101,11 @@ async fn main() {
     // t15::test2();
     // t15::test4();
     // t15::test5();
-    t15::test6().await;
+    // t15::test6().await;
+    // t15::test8().await;
+
+    // 这里 fut 正在等待 1 秒的 sleep
+    // 不会打印 "3. ..." 因为还没 poll 完
 
     // use std::os::raw::c_int;
 
@@ -109,4 +118,20 @@ async fn main() {
     //     let sum = add(10, 20);
     //     println!("sum:{}", sum);
     // }
+
+    // T 是 !Unpin
+
+    let interval = time::interval(time::Duration::from_secs(5));
+    // 将定时器转换为 Stream
+    let interval_stream = stream::unfold(interval, |mut interval| async {
+        interval.tick().await;
+        Some(((), interval))
+    })
+    .fuse(); // 标记为 FusedStream
+
+    // 确保 Stream 是 Unpin 的
+    let interval_stream = Box::pin(interval_stream);
+
+    // 运行主循环
+    t15::run_loop(interval_stream, 0).await;
 }

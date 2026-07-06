@@ -525,3 +525,137 @@ pub async fn test6() {
         })
         .await;
 }
+
+// WRONG:同时听歌和看书maybe:
+// 实际上智能先读书后听音乐
+// async fn enjoy_book_and_music() -> (Book, Music) {
+//     let book = enjoy_book().await;
+//     let music = enjoy_music().await;
+//     (book, music)
+// }
+//
+
+// WRONG:maybe:
+// still wrong.在某些语言中也许可以，但是 Rust 不行。因为在某些语言中，Future一旦创建就开始运行，等到返回的时候，基本就可以同时结束并返回了。 但是 Rust 中的 Future 是惰性的，直到调用 .await 时，才会开始运行。而那两个 await 由于在代码中有先后顺序，因此它们是顺序运行的。
+// async fn enjoy_book_and_music() -> (Book, Music) {
+//     let book_future = enjoy_book();
+//     let music_future = enjoy_music();
+//     (book_future.await, music_future.await)
+// }
+
+// True:
+use futures::join;
+
+async fn enjoy_book() -> u32 {
+    25
+}
+
+async fn enjoy_music() -> String {
+    String::from("asdasdsa")
+}
+
+async fn enjoy_book_with_error() -> Result<u32, String> {
+    Ok(25)
+}
+
+async fn enjoy_music_with_error() -> Result<String, String> {
+    Ok(String::from("asdasdsa"))
+}
+
+async fn enjoy_book_and_music() -> (u32, String) {
+    let book_fut = enjoy_book();
+    let music_fut = enjoy_music();
+    join!(book_fut, music_fut)
+}
+
+async fn enjoy_book_and_music_with_error() -> Result<(u32, String), String> {
+    let book_fut = enjoy_book_with_error();
+    let music_fut = enjoy_music_with_error();
+    futures::try_join!(book_fut, music_fut)
+}
+
+pub async fn test7() {
+    let (age, name) = enjoy_book_and_music().await;
+    println!("{age},{name}");
+    if let Ok((a, b)) = enjoy_book_and_music_with_error().await {
+        println!("{a},{b}");
+    } else {
+        println!("Error");
+    }
+}
+
+pub async fn test8() {
+    use futures::{
+        future::FutureExt, // for `.fuse()`
+        pin_mut,
+        select,
+    };
+
+    async fn task_one() {}
+    async fn task_two() {}
+
+    async fn reac_tasks() {
+        let t2 = task_two().fuse();
+        let t1 = task_one().fuse();
+
+        let mut t1 = pin!(t1); // 重新绑定，覆盖原来的 t1
+        let mut t2 = pin!(t2); // 重新绑定，覆盖原来的 t2
+
+        loop {
+            select! {
+                () = t1 => {println!("task1")},
+                () = t2 => {println!("task2")},
+                complete => break,
+                default => panic!(),
+            }
+        }
+    }
+    reac_tasks().await;
+}
+
+use futures::{
+    future::{Fuse, FusedFuture, FutureExt},
+    pin_mut, select,
+    stream::FusedStream,
+};
+
+async fn get_new_num() -> u8 {
+    // 这里可以是网络请求、数据库查询等
+    tokio::time::sleep(tokio::time::Duration::from_secs(2)).await;
+    42 // 示例返回值
+}
+
+async fn run_on_new_num(num: u8) {
+    /* ... */
+    println!("Processing number: {}", num);
+    tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
+    println!("Finished processing number: {}", num);
+}
+
+pub async fn run_loop(
+    mut interval_timer: impl Stream<Item = ()> + FusedStream + Unpin,
+    starting_num: u8,
+) {
+    let run_on_new_num_fut = run_on_new_num(starting_num).fuse();
+    let get_new_num_fut = Fuse::terminated();
+    pin_mut!(run_on_new_num_fut, get_new_num_fut);
+    loop {
+        select! {
+            () = interval_timer.select_next_some() => {
+                // 定时器已结束，若`get_new_num_fut`没有在运行，就创建一个新的
+                if get_new_num_fut.is_terminated() {
+                    get_new_num_fut.set(get_new_num().fuse());
+                }
+            },
+            new_num = get_new_num_fut => {
+                // 收到新的数字 -- 创建一个新的`run_on_new_num_fut`并丢弃掉旧的
+                run_on_new_num_fut.set(run_on_new_num(new_num).fuse());
+            },
+            // 运行 `run_on_new_num_fut`
+            () = run_on_new_num_fut => {},
+            // 若所有任务都完成，直接 `panic`， 原因是 `interval_timer` 应该连续不断的产生值，而不是结束
+            //后，执行到 `complete` 分支
+            complete => panic!("`interval_timer` completed unexpectedly"),
+        }
+    }
+}
