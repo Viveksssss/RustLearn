@@ -613,49 +613,72 @@ pub async fn test8() {
     reac_tasks().await;
 }
 
-use futures::{
-    future::{Fuse, FusedFuture, FutureExt},
-    pin_mut, select,
-    stream::FusedStream,
-};
-
-async fn get_new_num() -> u8 {
-    // 这里可以是网络请求、数据库查询等
-    tokio::time::sleep(tokio::time::Duration::from_secs(2)).await;
-    42 // 示例返回值
+pub async fn test9() {
+    let a = 25u32;
+    let fut = async move {
+        println!("{a}");
+        Ok::<(), String>(())
+    };
+    match fut.await {
+        Ok(_) => println!("Yes"),
+        Err(e) => println!("No:{e}"),
+    }
 }
 
-async fn run_on_new_num(num: u8) {
-    /* ... */
-    println!("Processing number: {}", num);
-    tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
-    println!("Finished processing number: {}", num);
-}
+use std::rc::Rc;
+#[derive(Default)]
+struct NotSend(Rc<()>);
 
-pub async fn run_loop(
-    mut interval_timer: impl Stream<Item = ()> + FusedStream + Unpin,
-    starting_num: u8,
-) {
-    let run_on_new_num_fut = run_on_new_num(starting_num).fuse();
-    let get_new_num_fut = Fuse::terminated();
-    pin_mut!(run_on_new_num_fut, get_new_num_fut);
-    loop {
-        select! {
-            () = interval_timer.select_next_some() => {
-                // 定时器已结束，若`get_new_num_fut`没有在运行，就创建一个新的
-                if get_new_num_fut.is_terminated() {
-                    get_new_num_fut.set(get_new_num().fuse());
-                }
-            },
-            new_num = get_new_num_fut => {
-                // 收到新的数字 -- 创建一个新的`run_on_new_num_fut`并丢弃掉旧的
-                run_on_new_num_fut.set(run_on_new_num(new_num).fuse());
-            },
-            // 运行 `run_on_new_num_fut`
-            () = run_on_new_num_fut => {},
-            // 若所有任务都完成，直接 `panic`， 原因是 `interval_timer` 应该连续不断的产生值，而不是结束
-            //后，执行到 `complete` 分支
-            complete => panic!("`interval_timer` completed unexpectedly"),
+fn require_send(_: impl Send) {}
+
+pub async fn test10() {
+    async fn bar() {}
+    async fn foo() {
+        // 虽然这个NotSend结构体没有实现Send特征.但是,这个临时变量创建之后立马就被drop了,接下来不会携带这个非Send数据
+        // 如果是let x = NotSend::default();则会报错.
+        // 也可以是用std::mem::drop(x)提前drop.
+        let x = NotSend::default();
+        std::mem::drop(x);
+
+        bar().await;
+    }
+    require_send(foo());
+}
+use futures::future::{BoxFuture, FutureExt};
+
+fn recursive(count: u32) -> BoxFuture<'static, ()> {
+    async move {
+        if count == 0 {
+            println!("Done!");
+            return;
         }
+        println!("recursive with count : {count}");
+        recursive(count - 1).await;
+    }
+    .boxed()
+}
+
+pub async fn test11() {
+    let rf = recursive(5);
+    rf.await;
+}
+
+trait Test {
+    async fn test();
+}
+
+struct Strs {
+    name: String,
+    id: String,
+    age: u32,
+}
+
+impl Test for Strs {
+    async fn test() {}
+}
+
+impl Strs {
+    pub fn name(self: &Self) -> String {
+        self.name.clone()
     }
 }

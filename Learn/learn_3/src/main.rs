@@ -18,7 +18,7 @@ mod t14;
 // mod t8;
 // mod t9;
 mod t15;
-#[tokio::main]
+#[tokio::main(worker_threads = 4)]
 async fn main() {
     println!("Hello, world!");
     // t1::test3();
@@ -103,6 +103,9 @@ async fn main() {
     // t15::test5();
     // t15::test6().await;
     // t15::test8().await;
+    // t15::test9().await;
+    // t15::test10().await;
+    t15::test11().await;
 
     // 这里 fut 正在等待 1 秒的 sleep
     // 不会打印 "3. ..." 因为还没 poll 完
@@ -120,18 +123,4 @@ async fn main() {
     // }
 
     // T 是 !Unpin
-
-    let interval = time::interval(time::Duration::from_secs(5));
-    // 将定时器转换为 Stream
-    let interval_stream = stream::unfold(interval, |mut interval| async {
-        interval.tick().await;
-        Some(((), interval))
-    })
-    .fuse(); // 标记为 FusedStream
-
-    // 确保 Stream 是 Unpin 的
-    let interval_stream = Box::pin(interval_stream);
-
-    // 运行主循环
-    t15::run_loop(interval_stream, 0).await;
 }
