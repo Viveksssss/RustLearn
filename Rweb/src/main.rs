@@ -8,7 +8,7 @@ use tokio::net::{TcpListener, TcpStream}; // ← 添加这两行
 fn main() {
     let listener = std::net::TcpListener::bind("127.0.0.1:8888").unwrap();
     let pool = ThreadPool::new(4);
-    for stream in listener.incoming().take(4) {
+    for stream in listener.incoming() {
         let stream = stream.unwrap();
         pool.execute(|| {
             handle_connection2(stream);
@@ -44,7 +44,7 @@ fn main() {
 // }
 //
 fn handle_connection2(mut stream: std::net::TcpStream) {
-    use std::time::Duration;
+    // use std::time::Duration;
     let mut buffer = [0; 1024];
     stream.read(&mut buffer).unwrap();
 

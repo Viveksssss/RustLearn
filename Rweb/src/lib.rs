@@ -32,7 +32,6 @@ impl Worker {
                 match message {
                     Ok(job) => {
                         println!("Worker {id} got a job");
-                        thread::sleep(Duration::from_secs(5));
                         job();
                     }
                     Err(e) => {
