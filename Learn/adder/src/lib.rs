@@ -33,11 +33,6 @@ mod tests {
     }
 
     #[test]
-    fn another() {
-        // panic!("Make the test fail");
-    }
-
-    #[test]
     fn greeting_contains_name() {
         let result = greeting("gouxiong");
         assert!(

@@ -8,3 +8,9 @@ edition = "2024"
 
 [dev-dependencies]
 pretty_assertions = "1"
+criterion = "0.3"
+
+
+[[bench]]
+name = "my_benchmarks"
+harness = false
