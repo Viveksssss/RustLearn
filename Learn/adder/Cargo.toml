@@ -2,9 +2,15 @@
 name = "adder"
 version = "0.1.0"
 edition = "2024"
+autoexamples = false
+autotests = false
+autobenches = false
+license = "MIT"                          # SPDX 许可证标识符
+description = "A library for doing awesome things efficiently"
 
 [dependencies]
 regex = { git="https://github.com/rust-lang/regex" }
+libc = "0.2"
 
 [target.'cfg(unix)'.dependencies]
 openssl = { version=">0.1.0" }
@@ -17,3 +23,15 @@ criterion = "0.3"
 [[bench]]
 name = "my_benchmarks"
 harness = false
+
+[build]
+jobs = 4
+rustc = "rustc"
+pipelining = true             # rustc pipelining
+incremental = true            # 是否开启增量编译 
+
+[doc]
+browser = "edge"    
+
+[build-dependencies]
+cc = "1.0"
